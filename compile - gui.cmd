@@ -1,0 +1,1 @@
+pyinstaller -F --icon=favicon.ico --add-binary "./res/*;." --noconsole "Cricket Killer.py"
