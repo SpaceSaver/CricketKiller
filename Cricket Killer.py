@@ -11,7 +11,7 @@ from ppadb.client import Client as AdbClient
 if sys.platform.startswith('win'):
     import ctypes
     # Make sure Pyinstaller icons are still grouped
-    if sys.argv[0].endswith('.exe') == False:
+    if not sys.argv[0].endswith('.exe'):
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(u'CompanyName.ProductName.SubProduct.VersionInformation') # Arbitrary string
 
 
@@ -22,7 +22,10 @@ def resource_path(relative_path=""):
         base_path = sys._MEIPASS
         relative_path = relative_path.split('/')[-1]
     except AttributeError:
-        base_path = os.path.dirname(os.path.realpath(__file__)) + "\\res\\"
+        if sys.platform.startswith('linux'):
+            base_path = os.path.dirname(os.path.realpath(__file__)) + "/res-Linux/"
+        else:
+            base_path = os.path.dirname(os.path.realpath(__file__)) + "/res/"
 
     return os.path.join(base_path, relative_path)
 
@@ -56,7 +59,13 @@ if event in (sg.WIN_CLOSED, 'No'):
 
 # gif1 = open(resource_path("usb debugging.gif"), "rb").read()\
 print(resource_path()[:-1])
-os.system("cd \"{}\" && adb start-server".format(resource_path()[:-1]))
+if sys.platform.startswith('linux'):
+    os.system('chmod +x \"' + resource_path('adb') + '\"')
+if sys.platform.startswith('win'):
+    adbloc = resource_path('adb.exe')
+else:
+    adbloc = resource_path('adb')
+os.system("cd \"{}\" && \"{}\" start-server".format(resource_path()[:-1], adbloc))
 client = AdbClient(host="127.0.0.1", port=5037)
 print("Your ADB server version is {}.".format(client.version()))
 devices = client.devices()
@@ -64,18 +73,18 @@ gif1 = []
 for x in range(773):
     gif1.append(open(resource_path("debug/{}.png".format(x+1)), "rb").read())
 if len(devices) == 0:
-    window = sg.Window("Cricket Killer",
-                       [[sg.Text("Please connect your Cricket (🦗) device to the computer and ensure that "
-                                 "ADB debugging is enabled."),
-                         sg.Image(data=gif1[0], key='-IMAGE-')]],
-                       icon=resource_path('favicon.ico'))
+    if sys.platform.startswith("win"):
+        text = "Please connect your Cricket (🦗) device to the computer and ensure that ADB debugging is enabled."
+    else:
+        text = "Please connect your Cricket device to the computer and ensure that ADB debugging is enabled."
+    window = sg.Window("Cricket Killer", [[sg.Text(text), sg.Image(data=gif1[0], key='-IMAGE-')]], icon=resource_path('favicon.ico'))
 x = 1
 lgif1 = len(gif1)
 while len(devices) == 0:
     event, values = window.read(timeout=15)
-    print("run")
+    # print("run")
     if event == sg.WIN_CLOSED:
-        os.system("adb kill-server")
+        os.system("\"{}\" kill-server".format(adbloc))
         window.close()
         sys.exit()
     if x >= lgif1:
@@ -95,7 +104,7 @@ if not device_authorization_check(devices[0]):
 while not device_authorization_check(devices[0]):
     event, values = window.read(timeout=100)
     if event == sg.WIN_CLOSED:
-        os.system("adb kill-server")
+        os.system("\"{}\" kill-server".format(adbloc))
         window.close()
         sys.exit()
 window.close()
@@ -112,6 +121,6 @@ window = sg.Window("Cricket Killer",
                     [sg.Button("Yay!")]],
                    icon=resource_path('favicon.ico'),
                    no_titlebar=True)
-os.system("cd \"{}\" && adb kill-server".format(resource_path()[:-1]))
+os.system("cd \"{}\" && \"{}\" kill-server".format(resource_path()[:-1], adbloc))
 window.read()
 window.close()
