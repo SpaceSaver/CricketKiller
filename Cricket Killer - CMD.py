@@ -20,8 +20,12 @@ def resource_path(relative_path=""):
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
         base_path = sys._MEIPASS
+        relative_path = relative_path.split('/')[-1]
     except AttributeError:
-        base_path = os.path.abspath(".") + "\\res\\"
+        if sys.platform.startswith('linux'):
+            base_path = os.path.dirname(os.path.realpath(__file__)) + "/res-Linux/"
+        else:
+            base_path = os.path.dirname(os.path.realpath(__file__)) + "/res/"
 
     return os.path.join(base_path, relative_path)
 
@@ -35,7 +39,13 @@ def device_authorization_check(device):
 
 
 print(resource_path()[:-1])
-os.system("cd \"{}\" && adb start-server".format(resource_path()[:-1]))
+if sys.platform.startswith('linux'):
+    os.system('chmod +x \"' + resource_path('adb') + '\"')
+if sys.platform.startswith('win'):
+    adbloc = resource_path('adb.exe')
+else:
+    adbloc = resource_path('adb')
+os.system("cd \"{}\" && \"{}\" start-server".format(resource_path()[:-1], adbloc))
 client = AdbClient(host="127.0.0.1", port=5037)
 print("Your ADB server version is {}.".format(client.version()))
 devices = client.devices()
@@ -52,6 +62,6 @@ while not device_authorization_check(devices[0]):
 print("Disabling app...")
 devices[0].shell("pm disable-user --user 0 com.dti.cricket")
 print("App disabled!\nEnjoy your phone!")
-os.system("cd \"{}\" && adb kill-server".format(resource_path()[:-1]))
+os.system("cd \"{}\" && \"{}\" kill-server".format(resource_path()[:-1], adbloc))
 sleep(5)
 print("Bye!")
